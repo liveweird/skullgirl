@@ -1,5 +1,30 @@
+import boto3
 import json
+import os
 import streamlit as st
+from langchain_community.llms import Bedrock
+from langchain.chains import ConversationChain
+from langchain.memory import ConversationBufferMemory
+
+
+region = os.environ['AWS_REGION']
+profile = os.environ['AWS_PROFILE']
+boto3_session = boto3.Session(region_name=region, profile_name=profile)
+bedrock_client = boto3_session.client(service_name="bedrock-runtime")
+
+
+llm = Bedrock(
+    client=bedrock_client,
+    region_name=region,
+    credentials_profile_name=profile,
+    model_id="anthropic.claude-v2:1"
+)
+
+conversation = ConversationChain(
+    llm=llm,
+    verbose=True,
+    memory=ConversationBufferMemory()
+)
 
 
 def read_input(file_name="./input.json"):
@@ -22,22 +47,9 @@ def compare_words(word1, word2):
     # compare two words, case insensitive, return True if equal
     return word1.lower() == word2.lower()
 
+
 def translate(to_be_translated):
-    import requests
-
-    API_TOKEN = "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"
-    API_URL = "https://api-inference.huggingface.co/models/Helsinki-NLP/opus-mt-pl-en"
-    headers = {"Authorization": f"Bearer {API_TOKEN}"}
-
-    def query(payload):
-        response = requests.post(API_URL, headers=headers, json=payload)
-        data = response.json()
-        return data[0]["translation_text"]
-
-    output = query({
-        "inputs": to_be_translated,
-    })
-    return output
+    return conversation.predict(input="Tell me something, just anything!")
 
 
 def render_ui():

@@ -2,9 +2,10 @@ import boto3
 import json
 import os
 import streamlit as st
-from langchain_community.llms import Bedrock
 from langchain.chains import ConversationChain
+from langchain.llms.bedrock import Bedrock
 from langchain.memory import ConversationBufferMemory
+from langchain.prompts import PromptTemplate
 
 
 region = os.environ['AWS_REGION']
@@ -13,18 +14,20 @@ boto3_session = boto3.Session(region_name=region, profile_name=profile)
 bedrock_client = boto3_session.client(service_name="bedrock-runtime")
 
 
+prompt_template = PromptTemplate.from_template("Translate the verb '{verb}' from Polish to English. Respond with a "
+                                               "single verb, without the initial 'to' particle or other characters")
+
+
 llm = Bedrock(
     client=bedrock_client,
     region_name=region,
     credentials_profile_name=profile,
-    model_id="anthropic.claude-v2:1"
+    model_id="mistral.mistral-large-2402-v1:0"
 )
-
-conversation = ConversationChain(
-    llm=llm,
-    verbose=True,
-    memory=ConversationBufferMemory()
-)
+llm.model_kwargs = {
+    "temperature": 0.5,
+    "max_tokens": 1000
+}
 
 
 def read_input(file_name="./input.json"):
@@ -49,7 +52,9 @@ def compare_words(word1, word2):
 
 
 def translate(to_be_translated):
-    return conversation.predict(input="Tell me something, just anything!")
+    prompt = prompt_template.format(verb=to_be_translated)
+    result = llm.predict(text=prompt)
+    return result
 
 
 def render_ui():
